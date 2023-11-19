@@ -1,0 +1,212 @@
+apiVersion: v1
+data:
+  V1__create_table.sql: |-
+    CREATE TABLE todo
+    (
+        todo_item_id     bigint not null
+            primary key,
+        creation_date    timestamp,
+        is_complete      boolean,
+        todo_date        date,
+        todo_description varchar(255),
+        todo_title       varchar(255),
+        update_date      timestamp
+    );
+
+    CREATE SEQUENCE todo_seq START 1110;
+  V2__data.sql: |
+    INSERT INTO public.todo (todo_item_id, creation_date, is_complete, todo_date, todo_description, todo_title, update_date) VALUES (1110, '2023-11-19 16:27:43.520000', false, '2023-11-30', 'Buy a book online', 'Buy a book', '2023-11-19 16:27:43.520000');
+    INSERT INTO public.todo (todo_item_id, creation_date, is_complete, todo_date, todo_description, todo_title, update_date) VALUES (1111, '2023-11-19 16:28:02.616000', false, '2023-11-30', 'Buy a book online', 'Buy a book', '2023-11-19 16:28:02.616000');
+    INSERT INTO public.todo (todo_item_id, creation_date, is_complete, todo_date, todo_description, todo_title, update_date) VALUES (1112, '2023-11-19 16:28:04.022000', false, '2023-11-30', 'Buy a book online', 'Buy a book', '2023-11-19 16:28:04.022000');
+    INSERT INTO public.todo (todo_item_id, creation_date, is_complete, todo_date, todo_description, todo_title, update_date) VALUES (1113, '2023-11-19 16:28:07.978000', false, '2023-11-30', 'Buy a book online', 'Buy a book1', '2023-11-19 16:28:07.978000');
+    INSERT INTO public.todo (todo_item_id, creation_date, is_complete, todo_date, todo_description, todo_title, update_date) VALUES (1114, '2023-11-19 16:28:47.158000', false, '2023-11-30', 'Buy a book online', 'Buy a book1', '2023-11-19 16:28:47.158000');
+    INSERT INTO public.todo (todo_item_id, creation_date, is_complete, todo_date, todo_description, todo_title, update_date) VALUES (1115, '2023-11-19 15:33:46.559000', false, '2023-11-30', 'Buy a book online', 'Buy a book1', '2023-11-19 15:33:46.560000');
+kind: ConfigMap
+metadata:
+  labels:
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: db-migrate
+    app.kubernetes.io/version: 8.5.12-alpine
+    helm.sh/chart: db-migrate-0.1.0
+  name: release-name-migrations
+  namespace: default
+---
+apiVersion: v1
+data:
+  .dockerconfigjson: eyJhdXRocyI6eyJnaGNyLmlvIjp7ImF1dGgiOiJkWE5sY201aGJXVTZaMmh3WDJ4eVdFSkZSemRMTUVkYU1HcEVTRGc0YkRKTFZESjNTRXRRWkRGWE1qSTNkWGxuUlE9PSJ9fX0=
+kind: Secret
+metadata:
+  labels:
+    app.kubernetes.io/name: flyway-demo
+  name: dockerconfigjson
+  namespace: default
+type: kubernetes.io/dockerconfigjson
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: postgresql
+  namespace: default
+stringData:
+  spring-datasource-password: postgres123
+type: Opaque
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: flyway-demo
+  namespace: default
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app.kubernetes.io/name: flyway-demo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: postgresql
+    chart: postgresql-0.2.4
+    heritage: Helm
+    release: release-name
+  name: postgresql
+  namespace: default
+spec:
+  ports:
+  - name: postgresql
+    port: 5432
+    targetPort: postgresql
+  selector:
+    app: postgresql
+    release: release-name
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/name: flyway-demo
+  name: flyway-demo
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: flyway-demo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: flyway-demo
+    spec:
+      containers:
+      - env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:postgresql://postgresql:5432/public
+        - name: SPRING_DATASOURCE_USERNAME
+          value: postgres
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: spring-datasource-password
+              name: postgresql
+              optional: false
+        image: ghcr.io/schumann-it/flyway-demo:sha-c438bc8
+        name: flyway-demo
+        ports:
+        - containerPort: 8080
+      imagePullSecrets:
+      - name: dockerconfigjson
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  labels:
+    app: postgresql
+    chart: postgresql-0.2.4
+    heritage: Helm
+    release: release-name
+  name: postgresql
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgresql
+      release: release-name
+  serviceName: postgresql-headless
+  template:
+    metadata:
+      labels:
+        app: postgresql
+        chart: postgresql-0.2.4
+        heritage: Helm
+        release: release-name
+      name: postgresql
+    spec:
+      containers:
+      - env:
+        - name: POSTGRES_PASSWORD
+          value: postgres123
+        - name: POSTGRES_USER
+          value: postgres
+        - name: POSTGRES_DB
+          value: public
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        image: postgres:11.5
+        imagePullPolicy: IfNotPresent
+        livenessProbe: null
+        name: postgresql
+        ports:
+        - containerPort: 5432
+          name: postgresql
+        readinessProbe: null
+        resources: {}
+        volumeMounts: null
+      volumes:
+      - emptyDir: {}
+        name: data
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    app.kubernetes.io/instance: release-name
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/name: db-migrate
+    app.kubernetes.io/version: 8.5.12-alpine
+    helm.sh/chart: db-migrate-0.1.0
+    jobgroup: migration
+  name: release-name
+  namespace: default
+spec:
+  template:
+    spec:
+      containers:
+      - args:
+        - migrate
+        env:
+        - name: FLYWAY_URL
+          value: jdbc:postgresql://postgresql:5432/public
+        - name: FLYWAY_USER
+          value: postgres
+        - name: FLYWAY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: spring-datasource-password
+              name: postgresql
+              optional: false
+        image: flyway/flyway:8.5.12-alpine
+        name: db-migrate
+        volumeMounts:
+        - mountPath: /flyway/sql
+          name: sql
+      restartPolicy: Never
+      volumes:
+      - configMap:
+          name: release-name-migrations
+        name: sql

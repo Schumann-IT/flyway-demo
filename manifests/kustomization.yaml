@@ -3,6 +3,7 @@ kind: Kustomization
 namespace: default
 
 resources:
+  - pull-secret.yaml
   - postgresql-secret.yaml
   - deployment.yaml
   - service.yaml
