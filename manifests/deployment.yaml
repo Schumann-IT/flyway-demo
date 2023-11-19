@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: flyway-demo
-          image: ghcr.io/schumann-it/flyway-demo:sha-c25b6bc
+          image: ghcr.io/schumann-it/flyway-demo:sha-c438bc8
           env:
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:postgresql://postgresql:5432/public"
