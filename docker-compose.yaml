@@ -25,7 +25,7 @@ services:
 
   init-db:
     image: flyway/flyway
-    command: -url=jdbc:postgresql://postgres_db:5432/postgres -schemas=postgres -user=postgres -password=postgres123 -connectRetries=60 migrate
+    command: -url=jdbc:postgresql://postgres_db:5432/postgres -schemas=public -user=postgres -password=postgres123 -connectRetries=60 migrate
     volumes:
       - ./src/main/resources/db/migration:/flyway/sql
     depends_on:

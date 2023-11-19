@@ -1,0 +1,35 @@
+# migration/migration-job.yml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    jobgroup: migration
+    {{- include "db-migrate.labels" . | nindent 4 }}
+spec:
+  template:
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        args:
+        - {{ .Values.flyway.command }}
+        env:
+        - name: FLYWAY_URL
+          value: "jdbc:postgresql://{{ .Values.db.host }}:{{ .Values.db.port }}/{{ .Values.db.name }}"
+        - name: FLYWAY_USER
+          value: {{ .Values.db.adminUser }}
+        - name: FLYWAY_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name:  {{ .Values.db.secret.name }}
+              key: {{ .Values.db.secret.key }}
+              optional: false
+        volumeMounts:
+        - mountPath: /flyway/sql
+          name: sql
+      volumes:
+      - name: sql
+        configMap:
+          name: {{ .Release.Name }}-migrations
+      restartPolicy: Never

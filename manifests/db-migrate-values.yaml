@@ -1,0 +1,8 @@
+fullnameOverride: db-migrations
+
+db:
+  name: public
+  secret:
+    name: postgresql
+    key: spring-datasource-password
+
