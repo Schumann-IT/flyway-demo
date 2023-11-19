@@ -23,7 +23,7 @@ import java.util.Date;
 
 public class Todo {
     @Id
-    @SequenceGenerator(name = "todo_seq", initialValue = 1110, allocationSize = 101)
+    @SequenceGenerator(name = "todo_seq", initialValue = 1110, allocationSize = 1)
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "todo_seq")
     @Column(name = "todo_item_id", updatable = false, nullable = false)
     private long TodoId;

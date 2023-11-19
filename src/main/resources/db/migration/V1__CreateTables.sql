@@ -1,4 +1,4 @@
-create table todo
+CREATE TABLE todo
 (
     todo_item_id     bigint not null
         primary key,
@@ -9,3 +9,5 @@ create table todo
     todo_title       varchar(255),
     update_date      timestamp
 );
+
+CREATE SEQUENCE todo_seq START 1110;
