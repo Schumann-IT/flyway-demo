@@ -12,6 +12,10 @@ table "entscheidungsart_rulingtype" {
     null = false
     type = character_varying(255)
   }
+  column "foobar" {
+    null = true
+    type = integer
+  }
   primary_key {
     columns = [column.id]
   }
@@ -60,56 +64,6 @@ table "evsf_taxlawcollection" {
   index "dok_docnr" {
     unique  = true
     columns = [column.dok_docnr]
-  }
-}
-table "flyway_schema_history" {
-  schema = schema.public
-  column "installed_rank" {
-    null = false
-    type = integer
-  }
-  column "version" {
-    null = true
-    type = character_varying(50)
-  }
-  column "description" {
-    null = false
-    type = character_varying(200)
-  }
-  column "type" {
-    null = false
-    type = character_varying(20)
-  }
-  column "script" {
-    null = false
-    type = character_varying(1000)
-  }
-  column "checksum" {
-    null = true
-    type = integer
-  }
-  column "installed_by" {
-    null = false
-    type = character_varying(100)
-  }
-  column "installed_on" {
-    null    = false
-    type    = timestamp
-    default = sql("now()")
-  }
-  column "execution_time" {
-    null = false
-    type = integer
-  }
-  column "success" {
-    null = false
-    type = boolean
-  }
-  primary_key {
-    columns = [column.installed_rank]
-  }
-  index "flyway_schema_history_s_idx" {
-    columns = [column.success]
   }
 }
 table "gericht_court" {

@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-migration-cm-job
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      containers:
+        - name: create-migration-cm
+          image: create-migration-cm:latest
+          command: [ "/bin/sh", "-c" ]
+          args:
+            - git clone {{ .Values.dbMigration.sourceRepoURL }} source; # fetch sources
+              cp source/src/main/resources/db/migration/* /charts/db-migration/migrations; # include migrations with chart
+              helm template migration-cm charts/migration-cm ---set-string name={{ .Release.Name }}-migrations > manifest.yaml; # create the manifest
+              kubectl apply -n {{ .Release.Namespace }} -f manifest.yaml; # apply the manifest
+      restartPolicy: Never
+  backoffLimit: 4

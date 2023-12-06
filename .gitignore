@@ -33,3 +33,5 @@ build/
 data
 manifests/charts/postgresql*
 manifests.yaml
+
+.DS_Store

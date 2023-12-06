@@ -1,57 +1,141 @@
-# Todo REST API
+# Demo
 
+## Preparation
 
-The following is simple todo REST API using the [Spring Boot Framework](https://spring.io/projects/spring-boot). The API allow you to
-add item to a to-do list, update, select and remove from the list.
+- Apply the initial schema (instead of starting off of an existing DB)
+```bash
+docker-compose down
+rm -Rf data
+docker-compose up -d postgres_db
+cd db/new
+# create database
+atlas schema apply --url "postgresql://postgres:postgres123@localhost:5432/postgres?sslmode=disable" --to "file://schema.hcl" --dev-url "docker://postgres/15"
+# seed db
+atlas migrate hash --dir "file://data"  
+atlas migrate apply --dir "file://data" --url 'postgresql://postgres:postgres123@localhost:5432/postgres?sslmode=disable' --allow-dirty
+```
 
+## Initialize DB migrations from an existing database
 
+**Use Case: When migrating from Flyway**
 
-##  Concepts used in this Application
+- Setup and migrate the DB to the current version via flyway
+```bash
+docker-compose down
+rm -Rf data
+docker-compose up -d postgres_db
+# DO FLYWAY MIGRATION HERE 
+```
+- Create the initial schema
+```bash
+# Atlas DDL
+atlas schema inspect -u "postgresql://postgres:postgres123@localhost:5432/postgres?sslmode=disable" > schema.hcl
+# OR SQL
+atlas schema inspect -u "postgresql://postgres:postgres123@localhost:5432/postgres?sslmode=disable" --format '{{ sql . "  " }}' > schema.sql
+```
+- Create the initial migration files (only needed for versioned workflow)
+```bash
+atlas migrate diff initial --dir "file://migrations" --dev-url "docker://postgres/15/dev?search_path=public" --to "postgresql://postgres:postgres123@localhost:5432/postgres?search_path=public&sslmode=disable" --format '{{ sql . "  " }}'
+```
+- Commit migration files and schema.hcl or sql
 
+## Developer Workflow
 
-* [@RestController](https://spring.io/guides/gs/rest-service/)
-* [@Service](https://spring.io/guides/gs/rest-service/)
-* [@Entity](https://spring.io/guides/gs/rest-service/)
-* [CrudRepository](https://docs.spring.io/spring-data/data-commons/docs/1.6.1.RELEASE/reference/html/repositories.html)
+### Initialize Database
 
+```bash
+docker-compose down
+# (optional) cleanup data dir
+rm -rf data
+# start db
+docker-compose up -d postgres_db
+docker-compose up migration
+```
 
-### Usage
-* Make sure you have [java JDK](https://www.oracle.com/java/technologies/javase-jdk8-downloads.html) and [Maven](https://maven.apache.org/) installed
-* Make sure you have a Mysql server running.
-* Create a database with the following name: todo_db, you can modify it in the application.properties file with this line:  spring.datasource.url=jdbc:mysql://localhost:3306/todo_db?autoReconnect=true& 
-* Modify the username and pawsord in the file mention above with this line:  spring.datasource.username=testUsername spring.datasource.password=testpasword
-* Run the application using your preferred IDE ([IntelliJ](https://www.jetbrains.com/idea/), [STS](https://spring.io/tools))
+### Add DB Migration
 
+- chdir to the database schema directory
+```bash
+cd db/new
+```
 
+- Make any change to the schema.hcl. E.g. add a column
+- Apply the Schema to the dev database (declarative workflow)
+```bash
+atlas schema apply --url "postgresql://postgres:postgres123@localhost:5432/postgres?sslmode=disable" --to "file://schema.hcl" --dev-url "docker://postgres/15"
+```
 
-##  Application Demo with [Postman](https://www.postman.com/):
+- Create the migration file for the latest change (only needed for versioned workflow)
+```bash
+atlas migrate diff remove_doktyp_feld_column --dir "file://migrations" --dev-url "docker://postgres/15/dev?search_path=public" --to "postgresql://postgres:postgres123@localhost:5432/postgres?search_path=public&sslmode=disable" --format '{{ sql . "  " }}'
+```
+- Commit migration files so that others will be up-to-date
 
+## Add data seeding
 
+- Assuming we are using only the declarative workflow
+- Thus no migrations directory exists
+- Create a new data seed
+```bash
+# create seed file
+atlas migrate new --dir "file://data_seeds" my_data_seed
 
-### Todo list :
+## Add seed data to the new file
 
-<img src="https://github.com/claykabongok/Todo-REST-API-Spring-Boot/blob/master/readme/todolist.jpg?raw=true"  alt="Demo screen postman">
+# calculate new checksum
+atlas migrate hash --dir "file://data_seeds"
 
+# apply seed data
+atlas migrate apply --dir "file://data_seeds" --url 'postgresql://postgres:postgres123@localhost:5432/postgres?sslmode=disable' --allow-dirty
+```
 
-### Add  Item
+## Deploy to any Environment
 
-<img src="https://github.com/claykabongok/Todo-REST-API-Spring-Boot/blob/master/readme/additem.jpg?raw=true"  alt="Demo screen postman">
+### Using Container Image
 
+- Create Image within a pipleline
+```bash
+docker build -t project-migrations:latest -f Dockerfile.migrations .
+```
+- run a kubernetes job as part of the deployment
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: project-migration
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  template:
+    spec:
+      containers:
+        - name: migration
+          image: project-migrations:latest
+          args:
+            - >
+              migrate apply
+              --url 'postgresql://postgres:postgres123@postgres_db:5432/postgres?sslmode=disable'
+      restartPolicy: Never
+ 
+```
 
-### Update item
-<img src="https://github.com/claykabongok/Todo-REST-API-Spring-Boot/blob/master/readme/updateItem.jpg?raw=true"  alt="Demo screen postman">
+### Using ArgoCD
 
+- Using this approach, no migration files are needed any more. Only the schema.hcl is needed.
+- Migration files can still be used for data seeding
+- Data seeds can be deployed using a container image and a kubernetes job as described above
 
-
-
-
-### Delete item
-<img src="https://github.com/claykabongok/Todo-REST-API-Spring-Boot/blob/master/readme/deleteInvalidId.jpg?raw=true"  alt="Demo screen postman">
-
-
-
-<img src="https://github.com/claykabongok/Todo-REST-API-Spring-Boot/blob/master/readme/deleteItem.jpg?raw=true"  alt="Demo screen postman">
-
-
-
-
+```yaml
+apiVersion: db.atlasgo.io/v1alpha1
+kind: AtlasSchema
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: project
+spec:
+  url: postgresql://postgres:postgres123@postgres_db:5432/postgres?sslmode=disable
+  schema:
+    hcl: |
+      # CONTENTS OF db/new /schema.hcl here #
+```
