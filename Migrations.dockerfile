@@ -1,3 +1,3 @@
-FROM flyway/flyway
+FROM arigaio/atlas:latest
 
-COPY src/main/resources/db/migration /flyway/sql
+COPY db/migrations /migrations
