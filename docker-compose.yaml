@@ -24,10 +24,12 @@ services:
       - '5432:5432'
 
   migration:
-    image: flyway/flyway
-    command: -url=jdbc:postgresql://postgres_db:5432/postgres -schemas=public -user=postgres -password=postgres123 -connectRetries=60 migrate
+    image: arigaio/atlas:latest
+    command: >
+      migrate apply
+      --url postgresql://postgres:postgres123@postgres_db:5432/postgres?sslmode=disable
     volumes:
-      - ./src/main/resources/db/migration:/flyway/sql
+      - ./db/migrations:/migrations
     depends_on:
       - postgres_db
     links:

@@ -11,20 +11,7 @@ spec:
       containers:
       - name: todo-migration
         image: todo-migration:1.0.0
-        args:
-          - info
-          - repair
-          - migrate
-          - info
-        env:
-        - name: FLYWAY_URL
-          value: "jdbc:postgresql://postgres_db:5432/postgres"
-        - name: FLYWAY_USER
-          value: postgres
-        - name: FLYWAY_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: db-secret
-              key: db-password
-              optional: false
+        command: >
+          migrate apply
+          --url postgresql://postgres_db:5432/postgres?sslmode=disable
       restartPolicy: Never
