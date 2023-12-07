@@ -33,12 +33,12 @@ The difference is,
 
 _Flyway_
 ```
-mvn flyway migrate
+mvn flyway:migrate
 ```
 
 _Atlas_
 ```
-atlas migrate apply --dir "file://src/main/resources/db.migration" --url 'postgresql://postgres:postgres123@localhost:5432/postgres'
+atlas migrate apply --dir "file://src/main/resources/db/migration" --url 'postgresql://postgres:postgres123@localhost:5432/postgres'
 ```
 
 ### Docker Compose

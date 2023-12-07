@@ -8,7 +8,7 @@ services:
     links:
       - postgres_db
     depends_on:
-      - init-db
+      - postgres_db
     ports:
       - '8080:8080'
 
@@ -23,7 +23,7 @@ services:
     ports:
       - '5432:5432'
 
-  init-db:
+  migration:
     image: flyway/flyway
     command: -url=jdbc:postgresql://postgres_db:5432/postgres -schemas=public -user=postgres -password=postgres123 -connectRetries=60 migrate
     volumes:
@@ -32,28 +32,3 @@ services:
       - postgres_db
     links:
       - postgres_db
-
-  migrate:
-    image: arigaio/atlas:latest
-    command: >
-      migrate apply 
-      --url 'postgresql://postgres:postgres123@postgres_db:5432/postgres?sslmode=disable'
-    depends_on:
-      - postgres_db
-    links:
-      - postgres_db
-    volumes:
-      - ./db/new/migrations/:/migrations
-
-  migrate-seed:
-    image: arigaio/atlas:latest
-    command: >
-      migrate apply 
-      --url 'postgresql://postgres:postgres123@postgres_db:5432/postgres?sslmode=disable'
-      --allow-dirty
-    depends_on:
-      - postgres_db
-    links:
-      - postgres_db
-    volumes:
-      - ./db/new/migrations/:/migrations
