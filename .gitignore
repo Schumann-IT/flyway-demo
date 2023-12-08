@@ -29,3 +29,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+data
+manifests/charts/postgresql*
+manifests.yaml
